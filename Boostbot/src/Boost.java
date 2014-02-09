@@ -12,23 +12,26 @@ import lejos.nxt.UltrasonicSensor;
 
 public class Boost {
 
-	static UltrasonicSensor sensor;
-	static LightSensor ls;
-	public static final int MIN_DIST = 10; 
+	public static UltrasonicSensor sensor;
+	public static LightSensor ls;
+	public static final int MIN_DIST = 10;
+	public static final int LED_THRESHOLD = 4;
+	public static int headAngle = 0;
 	
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception
+	{
 		sensor = new UltrasonicSensor(SensorPort.S4);
 		ls = new LightSensor(SensorPort.S1);
 		
-		ls.setFloodlight(true);
-		Motor.B.setSpeed(90);
-		Motor.C.setSpeed(90);
+		Motor.A.setSpeed(360);
+		Motor.B.setSpeed(180);
+		Motor.C.setSpeed(180);
 		int distance = 255;
 		int brightness = 0;
-//		final File donk = new File("donk2.wav"); 
-//		Sound.playSample(donk, 100);
-		while(!Button.ESCAPE.isDown()) {
-//			LCD.clear();
+//		final File music = new File("imperial.wav"); 
+//		Sound.playSample(music, 100);
+		while(!Button.ESCAPE.isDown())
+		{
 			LCD.drawString("I AM BOOST", 0, 0);
 			distance = sensor.getDistance();
 			brightness = ls.readValue();
@@ -37,21 +40,23 @@ public class Boost {
 			LCD.clear(2);
 			LCD.drawString("   light: " + brightness, 0, 2);
 			isThereAWall();
-			if (Button.ENTER.isDown()) {
+			if (Button.ENTER.isDown())
+			{
 				forward(1);
 			}
-			if (Button.RIGHT.isDown()) {
+			if (Button.RIGHT.isDown())
+			{
 				turnLeft(90);
 			}
-			if (Button.LEFT.isDown()) {
+			if (Button.LEFT.isDown())
+			{
 				turnRight(90);
 			}
-			if (distance < MIN_DIST) {
-//				Sound.playNote(Sound.PIANO, 880 - (distance * 20), 500);
+			if (distance < MIN_DIST)
+			{
 				LCD.drawString("MOVE BITCH", 0, 3);
 				LCD.drawString("GET OUT THE WAY!", 0, 4);
-				// Motor.B.backward();
-				// Motor.C.backward();
+//				backward(1.0);
 //				Sound.beep();
 			} else {
 				LCD.clear(3);
@@ -61,52 +66,39 @@ public class Boost {
 			}
 			Thread.sleep(250);
 		}
-		ls.setFloodlight(false);
 	}
 	
-	public static void forward(double revolutions) throws Exception {
-		Motor.B.forward();
-		Motor.C.forward();
-		Thread.sleep((long) (4000*revolutions));
-		Motor.B.stop(true);
-		Motor.C.stop(true);
+	public static void forward(double revolutions) throws Exception
+	{
+		// TODO Check that forward goes forward and backward goes backward
+		// I can't remember if a negative angle meant forward or not.
+		int angle = -360 * (int) revolutions;
+		Motor.B.rotate(angle, true);
+		Motor.C.rotate(angle, false);
 	}
 	
-	public static void backward(double revolutions) throws Exception {
-		Motor.B.backward();
-		Motor.C.backward();
-		Thread.sleep((long) (4000*revolutions));
-		Motor.B.stop(true);
-		Motor.C.stop(true);
-	}
-	
-	public static void goRight(double revolutions) throws Exception {
-		Motor.B.backward();
-		Motor.C.forward();
-		Thread.sleep((long) (4000*revolutions));
-		Motor.B.stop(true);
-		Motor.C.stop(true);
-	}
-	
-	public static void goLeft(double revolutions) throws Exception {
-		Motor.B.forward();
-		Motor.C.backward();
-		Thread.sleep((long) (4000*revolutions));
-		Motor.B.stop(true);
-		Motor.C.stop(true);
+	public static void backward(double revolutions) throws Exception
+	{
+		int angle = 360 * (int) revolutions;
+		Motor.B.rotate(angle, true);
+		Motor.C.rotate(angle, false);
 	}
 
-	public static void turnRight(int degrees) {
+	public static void turnRight(int degrees)
+	{
 		Motor.C.rotate(degrees * 2, true);
-		Motor.B.rotate((0 - degrees) * 2, false);
+		Motor.B.rotate(-degrees * 2, false);
 	}
 
-	public static void turnLeft(int degrees) {
+	public static void turnLeft(int degrees)
+	{
 		Motor.B.rotate(degrees * 2, true);
-		Motor.C.rotate((0 - degrees) * 2, false);
+		Motor.C.rotate(-degrees * 2, false);
 	}
 	
-	public static boolean isThereAWall() throws Exception {
+	public static boolean isThereAWall() throws Exception
+	{
+		//TODO I think the thread sleep value can be reduced.
 		int onValue, offValue, difference;
 		ls.setFloodlight(true);
 		Thread.sleep(250);
@@ -116,21 +108,27 @@ public class Boost {
 		Thread.sleep(250);
 		offValue = ls.readValue();
 		difference = onValue - offValue;
-//		Thread.sleep(250);
 		LCD.clear(5);
 		LCD.clear(6);
 		LCD.drawString("diff=" + difference, 0, 6);
-		if (difference > 4) {
+		if (difference > LED_THRESHOLD)
+		{
 			LCD.drawString("Hello wall!", 0, 5);
 			return true;
 		}
-//		LCD.drawString("on:" + onValue + " off:" + offValue, 0, 5);
 		return false;
 	}
 	
 	public static void rotateHead(int degrees)
 	{
+		headAngle += degrees;
 		Motor.A.rotate(degrees);
+	}
+	
+	public static void rotateToAngle(int degrees)
+	{
+		Motor.A.rotate(degrees - headAngle);
+		headAngle = degrees;
 	}
 	
 	public static ArrayList<Integer> calculateDistances(int rdeg)
