@@ -94,22 +94,31 @@ public class Boost {
 			oldSideWall = sideWall;
 			sideWall = checkSideWall();
 			
+			LCD.clear();
+			
 			if (frontWall) LCD.drawString("FRONT", 0, 1);
 			if (sideWall) LCD.drawString("SIDE", 0, 2);
+			/*if (!oldSideWall) LCD.drawString("OLDSIDE", 0, 3);
+			if (!sideWall) LCD.drawString("SIDE2", 0, 2);
+			if (oldSideWall) LCD.drawString("OLDSIDE2", 0, 3);
 			
-			if (!frontWall)
-			{
-				go();
-			}
-			else if (oldSideWall && !sideWall)
+			if (!sideWall && oldSideWall) LCD.drawString("WOAH", 0, 3);*/
+			
+			if (!sideWall && oldSideWall && reallyNoSideWall()) //We've changed from a state of wall to non wall
 			{
 				stop();
 				turnLeft(90);
+				go(); //go to make sure we don't get caught in a perpetual spin
+			}
+			else if (!frontWall)
+			{
+				go();
 			}
 			else if (frontWall)
 			{
 				stop();
 				turnRight(90);
+				go(); //go to make sure we don't get caught in a perpetual spin
 			}
 			else
 			{
@@ -170,6 +179,17 @@ public class Boost {
 	{
 		Motor.B.rotate((int)(-degrees * ROTATION_COEFFICIENT), true);
 		Motor.C.rotate((int)(degrees * ROTATION_COEFFICIENT), false);
+	}
+	
+	public static boolean reallyNoSideWall()
+	{
+		boolean isThereReallyNoSideWall;
+		
+		rotateHead(90);
+		isThereReallyNoSideWall = !checkFrontWall();
+		rotateHead(-90);
+		
+		return isThereReallyNoSideWall;
 	}
 	
 	public static boolean checkSideWall() throws Exception
