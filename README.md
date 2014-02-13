@@ -19,3 +19,7 @@ Step 4: move forwards with the led flashing add and the ultrasound pointing dire
 Corner turning
 
 If the wall detector no longer detects a wall, it could be because it has veered away from the wall slowly. It should turn left 45 degrees, then sweep to look for a wall within 20cm. If there is, align up to the wall and carry on. Otherwise it should turn the full 90 degrees (45 more) and carry on.
+
+NOTES FOR REPORT
+
+Error with light detector on back and ultrasound check on front.  Light registers end of wall (but not true) and BOOST too forward (i.e. ultrasound also registers end of wall), so BOOST wrongly turns.  SOLUTION: Move light detector closer to ultrasound, move forward X mm before rotation.
