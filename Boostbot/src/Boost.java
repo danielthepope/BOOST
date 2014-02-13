@@ -31,8 +31,8 @@ public class Boost {
 	{
 		setup();
 //		algorithmOne();
-//		algorithmOnePointOne();
-		pilotTest();
+		algorithmOnePointOne();
+//		pilotTest();
 	}
 	
 	private static void setup()
@@ -252,13 +252,6 @@ public class Boost {
 	{
 		pilot.stop();
 	}
-	
-//	private static void backward(double revolutions) throws Exception
-//	{
-//		int angle = -360 * (int) revolutions;
-//		Motor.B.rotate(angle, true);
-//		Motor.C.rotate(angle, false);
-//	}
 
 	private static void turnRight(int degrees)
 	{
@@ -291,6 +284,8 @@ public class Boost {
 		Thread.sleep(50);
 		offValue = ls.readValue();
 		difference = onValue - offValue;
+		LCD.clear(4);
+		LCD.drawString("diff=" + difference, 0, 4);
 		if (difference > LED_THRESHOLD)
 		{
 			return true;
