@@ -17,7 +17,7 @@ public class Boost {
 	private static DifferentialPilot pilot;
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
-	private static final int MIN_DIST = 14;
+	private static final int MIN_DIST = 11;
 	private static final int LED_THRESHOLD = 2;
 	private static final int DIFF_THRESHOLD = 4;
 	private static final double ROTATION_COEFFICIENT = 3;
@@ -44,7 +44,7 @@ public class Boost {
 		ls = new LightSensor(SensorPort.S1);
 		ls.setFloodlight(false);
 		
-		Motor.A.setSpeed(90);
+		Motor.A.setSpeed(180);
 		
 		pilot.setTravelSpeed(100);
 		pilot.setRotateSpeed(45);
@@ -182,9 +182,13 @@ public class Boost {
 			{
 				LCD.drawString("I'm following the side wall", 0, 2);
 				go();
-				if (!checkSideWall() && reallyNoSideWall()) // If there is no side wall we need to turn left
+				if (!checkSideWall()) // If there is no side wall we need to turn left
 				{
-					state = 3;
+					stop();
+					if (reallyNoSideWall())
+					{
+						state = 3;
+					}
 				}
 				else if (checkFrontWall()) // If there is a wall in front, turn right.
 				{
@@ -197,16 +201,25 @@ public class Boost {
 				LCD.clear(2);
 				LCD.drawString("AAAH! Hello wall.", 0, 2);
 				Sound.playSample(doh);
+				int reading = sensor.getDistance();
+				if (reading == 255)
+				{
+					go(MIN_DIST * -10); // Head is touching the wall
+				}
+				else if (reading <= MIN_DIST)
+				{
+					go((MIN_DIST - sensor.getDistance()) * -10); // Reverse a bit
+				}
 				turnRight(90);
 				state = 2;
 			}
 			if (state == 3) // The wall to my left has gone!
 			{
-				go(25);
+				go(35);
 				LCD.clear(2);
 				LCD.drawString("Oh dear oh dear oh dear", 0, 2);
 				Sound.playSample(aaah);
-				turnLeft(90);
+				arcLeft(90);
 				state = 4;
 			}
 			if (state == 4)
@@ -265,12 +278,17 @@ public class Boost {
 		pilot.rotate(degrees);
 	}
 	
+	private static void arcLeft(int degrees)
+	{
+		pilot.arc(82, degrees);
+	}
+	
 	private static boolean reallyNoSideWall()
 	{
 		boolean isThereReallyNoSideWall;
 		
 		rotateHead(90);
-		isThereReallyNoSideWall = !checkFrontWall();
+		isThereReallyNoSideWall = !checkFrontWall(MIN_DIST + 6);
 		rotateHead(-90);
 		
 		return isThereReallyNoSideWall;
@@ -297,9 +315,16 @@ public class Boost {
 		LCD.clear(5);
 		LCD.drawString("      diff=" + difference, 0, 4);
 		LCD.drawString("diffchange=" + differenceChange, 0, 5);
-		if (difference > LED_THRESHOLD && differenceChange < DIFF_THRESHOLD)
+		if (difference > LED_THRESHOLD)
 		{
-			return true;
+			if (differenceChange < DIFF_THRESHOLD)
+			{
+				return true;
+			}
+			else
+			{
+				Sound.playTone(300, 20);
+			}
 		}
 		return false;
 	}
@@ -308,6 +333,12 @@ public class Boost {
 	{
 		int distance = sensor.getDistance();
 		return distance < MIN_DIST;
+	}
+	
+	private static boolean checkFrontWall(int dist)
+	{
+		int distance = sensor.getDistance();
+		return distance < dist;
 	}
 	
 	private static void rotateHead(int degrees)

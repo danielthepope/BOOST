@@ -23,3 +23,12 @@ If the wall detector no longer detects a wall, it could be because it has veered
 NOTES FOR REPORT
 
 Error with light detector on back and ultrasound check on front.  Light registers end of wall (but not true) and BOOST too forward (i.e. ultrasound also registers end of wall), so BOOST wrongly turns.  SOLUTION: Move light detector closer to ultrasound, move forward X mm before rotation.
+
+
+
+
+TO DO
+=====
+1) Multiple side check fix (when the light sensor thinks there isn't a wall but the head sees that there is recursively)
+2) Make the robot turn perpendicular to the wall
+3) MAYBE handle complicated reverse
