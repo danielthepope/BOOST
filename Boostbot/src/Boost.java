@@ -145,7 +145,7 @@ public class Boost {
 	private static void algorithmOnePointOne() throws Exception
 	{
 		// Set state
-		// 0 : Initial state. Go forward until a wall is in front
+		// 0 : Initial state. Check the location of Boost
 		// 1 : There is a wall in front of me. I need to turn right
 		// 2 : I know there is a wall to my left. Go forward, checking both sensors
 		// 3 : There is no wall on the left. I now need to turn left
@@ -159,12 +159,22 @@ public class Boost {
 			LCD.drawString("State " + state, 0, 1);
 			if (state == 0)
 			{
-				LCD.drawString("I haven't found a wall yet", 0, 2);
-				go();
-				if (checkFrontWall()) // If there is a wall in front, turn right.
+				if(checkSideWall())
+				{
+					LCD.drawString("I found a side wall", 0, 2);
+					state = 2;
+					continue;
+				}
+				else if(!checkFrontWall())
+				{
+					LCD.drawString("I haven't found a wall yet", 0, 2);
+					go();
+				}
+				else
 				{
 					state = 1;
-				}
+					continue;
+				}				
 			}
 			if (state == 2)
 			{
