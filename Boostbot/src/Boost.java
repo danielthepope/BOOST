@@ -19,8 +19,10 @@ public class Boost {
 	private static LightSensor ls;
 	private static final int MIN_DIST = 14;
 	private static final int LED_THRESHOLD = 2;
+	private static final int DIFF_THRESHOLD = 4;
 	private static final double ROTATION_COEFFICIENT = 3;
 	private static int headAngle = 0;
+	private static int previousLightDifference = 255;
 //	private static final File music = new File("imperial.wav");
 	private static final File doh = new File("doh.wav");
 	private static final File aaah = new File("aaah.wav");
@@ -180,7 +182,7 @@ public class Boost {
 			{
 				LCD.drawString("I'm following the side wall", 0, 2);
 				go();
-				if (!checkSideWall()) // If there is no side wall we need to turn left
+				if (!checkSideWall() && reallyNoSideWall()) // If there is no side wall we need to turn left
 				{
 					state = 3;
 				}
@@ -276,7 +278,7 @@ public class Boost {
 	
 	private static boolean checkSideWall() throws Exception
 	{
-		int onValue, offValue, difference;
+		int onValue, offValue, difference, differenceChange;
 		ls.setFloodlight(true);
 		Thread.sleep(50);
 		onValue = ls.readValue();
@@ -284,9 +286,18 @@ public class Boost {
 		Thread.sleep(50);
 		offValue = ls.readValue();
 		difference = onValue - offValue;
+		
+		if(previousLightDifference == 255)
+			previousLightDifference = difference;
+		
+		differenceChange = previousLightDifference - difference;
+		previousLightDifference = difference;
+		
 		LCD.clear(4);
-		LCD.drawString("diff=" + difference, 0, 4);
-		if (difference > LED_THRESHOLD)
+		LCD.clear(5);
+		LCD.drawString("      diff=" + difference, 0, 4);
+		LCD.drawString("diffchange=" + differenceChange, 0, 5);
+		if (difference > LED_THRESHOLD && differenceChange < DIFF_THRESHOLD)
 		{
 			return true;
 		}
