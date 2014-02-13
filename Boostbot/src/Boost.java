@@ -8,34 +8,47 @@ import lejos.nxt.Motor;
 import lejos.nxt.SensorPort;
 import lejos.nxt.Sound;
 import lejos.nxt.UltrasonicSensor;
+import lejos.robotics.navigation.DifferentialPilot;
+import lejos.util.PilotProps;
 
 
 public class Boost {
 
-	public static UltrasonicSensor sensor;
-	public static LightSensor ls;
-	public static final int MIN_DIST = 12;
-	public static final int LED_THRESHOLD = 2;
-	public static final double ROTATION_COEFFICIENT = 3;
-	public static int headAngle = 0;
+	private static DifferentialPilot pilot;
+	private static UltrasonicSensor sensor;
+	private static LightSensor ls;
+	private static final int MIN_DIST = 14;
+	private static final int LED_THRESHOLD = 2;
+	private static final double ROTATION_COEFFICIENT = 3;
+	private static int headAngle = 0;
+//	private static final File music = new File("imperial.wav");
+	private static final File doh = new File("doh.wav");
+	private static final File aaah = new File("aaah.wav");
+//	private static final File woohoo = new File("woohoo.wav");
+//	private static final File flintstones = new File("flintstones.wav");
 	
 	public static void main(String[] args) throws Exception
 	{
 		setup();
-		algorithmOne();
+//		algorithmOne();
+//		algorithmOnePointOne();
+		pilotTest();
 	}
 	
-	public static void setup()
+	private static void setup()
 	{
+		pilot = new DifferentialPilot(55, 164, Motor.B, Motor.C); //56 164
 		sensor = new UltrasonicSensor(SensorPort.S4);
 		ls = new LightSensor(SensorPort.S1);
+		ls.setFloodlight(false);
 		
-		Motor.A.setSpeed(360);
-		Motor.B.setSpeed(180);
-		Motor.C.setSpeed(180);
+		Motor.A.setSpeed(90);
+		
+		pilot.setTravelSpeed(100);
+		pilot.setRotateSpeed(45);
 	}
 	
-	public static void original() throws Exception
+	private static void original() throws Exception
 	{
 		int distance = 255;
 		int brightness = 0;
@@ -79,9 +92,9 @@ public class Boost {
 		}
 	}
 	
-	public static void algorithmOne() throws Exception
+	private static void algorithmOne() throws Exception
 	{
-		LCD.drawString("I AM BOOST", 0, 0);
+		LCD.drawString("I AM BOOST 1.0", 0, 0);
 		//Set states
 		boolean frontWall = false;
 		boolean sideWall = false;
@@ -129,59 +142,125 @@ public class Boost {
 		}
 	}
 	
-	public static void forward(double revolutions) throws Exception
+	private static void algorithmOnePointOne() throws Exception
 	{
-		// TODO Check that forward goes forward and backward goes backward
-		// I can't remember if a negative angle meant forward or not.
+		// Set state
+		// 0 : Initial state. Go forward until a wall is in front
+		// 1 : There is a wall in front of me. I need to turn right
+		// 2 : I know there is a wall to my left. Go forward, checking both sensors
+		// 3 : There is no wall on the left. I now need to turn left
+		// 4 : I have just turned left. I need to go forward until I find a wall again
+		int state = 0;
+		LCD.drawString("I AM BOOST 1.1", 0, 0);
+		while (!Button.ESCAPE.isDown())
+		{
+			LCD.clear(1);
+			LCD.clear(2);
+			LCD.drawString("State " + state, 0, 1);
+			if (state == 0)
+			{
+				LCD.drawString("I haven't found a wall yet", 0, 2);
+				go();
+				if (checkFrontWall()) // If there is a wall in front, turn right.
+				{
+					state = 1;
+				}
+			}
+			if (state == 2)
+			{
+				LCD.drawString("I'm following the side wall", 0, 2);
+				go();
+				if (!checkSideWall()) // If there is no side wall we need to turn left
+				{
+					state = 3;
+				}
+				else if (checkFrontWall()) // If there is a wall in front, turn right.
+				{
+					state = 1;
+				}
+			}
+			if (state == 1) // There is a wall in front of me!
+			{
+				stop();
+				LCD.clear(2);
+				LCD.drawString("AAAH! Hello wall.", 0, 2);
+				Sound.playSample(doh);
+				turnRight(90);
+				state = 2;
+			}
+			if (state == 3) // The wall to my left has gone!
+			{
+				go(25);
+				LCD.clear(2);
+				LCD.drawString("Oh dear oh dear oh dear", 0, 2);
+				Sound.playSample(aaah);
+				turnLeft(90);
+				state = 4;
+			}
+			if (state == 4)
+			{
+				go();
+				if (checkFrontWall())
+				{
+					state = 1;
+				}
+				else if (checkSideWall())
+				{
+					state = 2;
+				}
+				// If there is not a side wall yet, keep going forward. No change.
+				// state = 4;
+			}
+			Thread.sleep(50);
+		}
+	}
+	
+	private static void pilotTest() throws Exception
+	{
+		dansFindPerpendicularWall();
+	}
+	
+	private static void forward(double revolutions) throws Exception
+	{
 		int angle = 360 * (int) revolutions;
 		Motor.B.rotate(angle, true);
 		Motor.C.rotate(angle, false);
 	}
 	
-	public static void go()
+	private static void go()
 	{
-		Motor.B.forward();
-		Motor.C.forward();
+		pilot.forward();
 	}
 	
-	public static void stop()
+	private static void go(int mm)
 	{
-		Motor.B.stop(true);
-		Motor.C.stop(true);
+		pilot.travel(mm);
+		stop();
 	}
 	
-	public static void backward(double revolutions) throws Exception
+	private static void stop()
 	{
-		int angle = -360 * (int) revolutions;
-		Motor.B.rotate(angle, true);
-		Motor.C.rotate(angle, false);
+		pilot.stop();
 	}
 	
-	public static void goRight(double revolutions)
+//	private static void backward(double revolutions) throws Exception
+//	{
+//		int angle = -360 * (int) revolutions;
+//		Motor.B.rotate(angle, true);
+//		Motor.C.rotate(angle, false);
+//	}
+
+	private static void turnRight(int degrees)
 	{
-		Motor.C.rotate((int) (360 * revolutions), true);
-		Motor.B.rotate((int) (-360 * revolutions), false);
-	}
-	
-	public static void goLeft(double revolutions)
-	{
-		Motor.C.rotate((int) (-360 * revolutions), true);
-		Motor.B.rotate((int) (360 * revolutions), false);
+		pilot.rotate(-degrees);
 	}
 
-	public static void turnRight(int degrees)
+	private static void turnLeft(int degrees)
 	{
-		Motor.C.rotate((int)(-degrees * ROTATION_COEFFICIENT), true);
-		Motor.B.rotate((int)(degrees * ROTATION_COEFFICIENT), false);
-	}
-
-	public static void turnLeft(int degrees)
-	{
-		Motor.B.rotate((int)(-degrees * ROTATION_COEFFICIENT), true);
-		Motor.C.rotate((int)(degrees * ROTATION_COEFFICIENT), false);
+		pilot.rotate(degrees);
 	}
 	
-	public static boolean reallyNoSideWall()
+	private static boolean reallyNoSideWall()
 	{
 		boolean isThereReallyNoSideWall;
 		
@@ -192,7 +271,7 @@ public class Boost {
 		return isThereReallyNoSideWall;
 	}
 	
-	public static boolean checkSideWall() throws Exception
+	private static boolean checkSideWall() throws Exception
 	{
 		int onValue, offValue, difference;
 		ls.setFloodlight(true);
@@ -209,25 +288,55 @@ public class Boost {
 		return false;
 	}
 	
-	public static boolean checkFrontWall()
+	private static boolean checkFrontWall()
 	{
 		int distance = sensor.getDistance();
 		return distance < MIN_DIST;
 	}
 	
-	public static void rotateHead(int degrees)
+	private static void rotateHead(int degrees)
 	{
 		headAngle += degrees;
 		Motor.A.rotate(degrees);
 	}
 	
-	public static void rotateToAngle(int degrees)
+	private static void rotateHeadToAngle(int degrees)
 	{
 		Motor.A.rotate(degrees - headAngle);
 		headAngle = degrees;
 	}
 	
-	public static ArrayList<Integer> calculateDistances(int rdeg)
+	private static void dansFindPerpendicularWall()
+	{
+		//pilot.forward();
+		int[] distances = new int[181];
+		int i = 0;
+		int closestAngle = 0;
+		for (int r = 0; r <= 180; r++)
+		{
+			//LCD.clear();
+			LCD.drawInt(r - 90, 4, 0, 0);
+			rotateHeadToAngle(r - 90);
+			distances[i] = sensor.getDistance();
+			if (distances[i] < 255)
+			{
+				Sound.playTone(2000 - distances[i] * 5, 20);
+				LCD.drawInt(distances[i], 4, 0, 1);
+			}
+			if (distances[i] < distances[closestAngle] && distances[i] < 50)
+			{
+				closestAngle = i;
+				LCD.drawInt(closestAngle - 90, 4, 0, 2);
+				LCD.drawInt(distances[closestAngle], 4, 6, 2);
+			}
+			i++;
+		}
+		rotateHeadToAngle(0);
+		turnLeft(closestAngle - 90);
+		
+	}
+	
+	private static ArrayList<Integer> calculateDistances(int rdeg)
 	{
 		ArrayList<Integer> distances = new ArrayList<Integer>();
 		
@@ -257,7 +366,7 @@ public class Boost {
 		return distances;
 	}
 	
-	public static boolean amIPerpendicular(ArrayList<Integer> distances, int rdeg)
+	private static boolean amIPerpendicular(ArrayList<Integer> distances, int rdeg)
 	{
 		//Find the distance with the least value
 		//If there's a tie pick the first one
@@ -284,7 +393,7 @@ public class Boost {
 		return false;
 	}
 	
-	public static void findPerpendicularWall(ArrayList<Integer> distances, int rdeg)
+	private static void findPerpendicularWall(ArrayList<Integer> distances, int rdeg)
 	{	
 		//Find the distance with the least value
 		//If there's a tie pick the first one
