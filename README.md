@@ -31,4 +31,5 @@ TO DO
 =====
 1) Multiple side check fix (when the light sensor thinks there isn't a wall but the head sees that there is recursively)
 2) Make the robot turn perpendicular to the wall
-3) MAYBE handle complicated reverse
+3) Have a pressure sensor and run a perpendicular check when activated
+4) MAYBE handle complicated reverse

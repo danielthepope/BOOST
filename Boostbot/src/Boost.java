@@ -12,8 +12,8 @@ import lejos.robotics.navigation.DifferentialPilot;
 import lejos.util.PilotProps;
 
 
-public class Boost {
-
+public class Boost
+{
 	private static DifferentialPilot pilot;
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
@@ -26,15 +26,16 @@ public class Boost {
 //	private static final File music = new File("imperial.wav");
 	private static final File doh = new File("doh.wav");
 	private static final File aaah = new File("aaah.wav");
-//	private static final File woohoo = new File("woohoo.wav");
+	private static final File woohoo = new File("woohoo.wav");
 //	private static final File flintstones = new File("flintstones.wav");
 	
 	public static void main(String[] args) throws Exception
 	{
 		setup();
+		
 //		algorithmOne();
 		algorithmOnePointOne();
-//		pilotTest();
+//		testMethod();
 	}
 	
 	private static void setup()
@@ -44,7 +45,7 @@ public class Boost {
 		ls = new LightSensor(SensorPort.S1);
 		ls.setFloodlight(false);
 		
-		Motor.A.setSpeed(180);
+		Motor.A.setSpeed(720);
 		
 		pilot.setTravelSpeed(100);
 		pilot.setRotateSpeed(45);
@@ -54,7 +55,6 @@ public class Boost {
 	{
 		int distance = 255;
 		int brightness = 0;
-//		final File music = new File("imperial.wav"); 
 //		Sound.playSample(music, 100);
 		while(!Button.ESCAPE.isDown())
 		{
@@ -82,8 +82,6 @@ public class Boost {
 			{
 				LCD.drawString("MOVE BITCH", 0, 3);
 				LCD.drawString("GET OUT THE WAY!", 0, 4);
-//				backward(1.0);
-//				Sound.beep();
 			} else {
 				LCD.clear(3);
 				LCD.clear(4);
@@ -147,18 +145,24 @@ public class Boost {
 	private static void algorithmOnePointOne() throws Exception
 	{
 		// Set state
-		// 0 : Initial state. Check the location of Boost
+		// -1: 
+		// 0 : Boost is looking perpendicular at a wall
 		// 1 : There is a wall in front of me. I need to turn right
 		// 2 : I know there is a wall to my left. Go forward, checking both sensors
 		// 3 : There is no wall on the left. I now need to turn left
 		// 4 : I have just turned left. I need to go forward until I find a wall again
-		int state = 0;
+		int state = -1 ;
 		LCD.drawString("I AM BOOST 1.1", 0, 0);
 		while (!Button.ESCAPE.isDown())
 		{
 			LCD.clear(1);
 			LCD.clear(2);
 			LCD.drawString("State " + state, 0, 1);
+			if (state == -1)
+			{
+				dansFindPerpendicularWall();
+				state = 0;
+			}
 			if (state == 0)
 			{
 				if(checkSideWall())
@@ -215,10 +219,10 @@ public class Boost {
 			}
 			if (state == 3) // The wall to my left has gone!
 			{
+				Sound.playSample(aaah);
 				go(35);
 				LCD.clear(2);
 				LCD.drawString("Oh dear oh dear oh dear", 0, 2);
-				Sound.playSample(aaah);
 				arcLeft(90);
 				state = 4;
 			}
@@ -232,6 +236,7 @@ public class Boost {
 				else if (checkSideWall())
 				{
 					state = 2;
+					Sound.playSample(woohoo);
 				}
 				// If there is not a side wall yet, keep going forward. No change.
 				// state = 4;
@@ -240,8 +245,9 @@ public class Boost {
 		}
 	}
 	
-	private static void pilotTest() throws Exception
+	private static void testMethod() throws Exception
 	{
+//		findPerpendicularWall(calculateDistances(5), 5);
 		dansFindPerpendicularWall();
 	}
 	
@@ -355,32 +361,35 @@ public class Boost {
 	
 	private static void dansFindPerpendicularWall()
 	{
-		//pilot.forward();
-		int[] distances = new int[181];
-		int i = 0;
-		int closestAngle = 0;
-		for (int r = 0; r <= 180; r++)
+		boolean foundWall = false;
+		SonarArray array;
+		SonarValue closestValue;
+		do
 		{
-			//LCD.clear();
-			LCD.drawInt(r - 90, 4, 0, 0);
-			rotateHeadToAngle(r - 90);
-			distances[i] = sensor.getDistance();
-			if (distances[i] < 255)
+			array = new SonarArray();
+			int radiusStep = 5;
+			int distance = 255;
+			for (int r = -90; r <= 90; r += radiusStep)
 			{
-				Sound.playTone(2000 - distances[i] * 5, 20);
-				LCD.drawInt(distances[i], 4, 0, 1);
+				rotateHeadToAngle(r);
+				distance = sensor.getDistance();
+				array.addValue(new SonarValue(r, distance));
 			}
-			if (distances[i] < distances[closestAngle] && distances[i] < 50)
+			closestValue = array.findClosestAngle();
+			if (closestValue.getDistance() == 255)
 			{
-				closestAngle = i;
-				LCD.drawInt(closestAngle - 90, 4, 0, 2);
-				LCD.drawInt(distances[closestAngle], 4, 6, 2);
+				// No obstacles nearby! Go forward a bit
+				go(500);
 			}
-			i++;
-		}
+			else
+			{
+				foundWall = true;
+			}
+		} while (foundWall == false);
+		int angle = closestValue.getAngle(); 
+		rotateHeadToAngle(angle);
+		turnLeft(angle);
 		rotateHeadToAngle(0);
-		turnLeft(closestAngle - 90);
-		
 	}
 	
 	private static ArrayList<Integer> calculateDistances(int rdeg)
@@ -398,7 +407,7 @@ public class Boost {
 		}
 		
 		//return to original position
-		rotateHead(-90);
+		rotateHeadToAngle(0);
 		
 		//rotate negative degree
 		for(int i = 0; i <= 90; i+=rdeg)
@@ -408,7 +417,7 @@ public class Boost {
 		}
 		
 		//return to original position
-		rotateHead(90);
+		rotateHeadToAngle(0);
 		
 		return distances;
 	}
@@ -485,6 +494,5 @@ public class Boost {
 				turnRight(angle);
 			}	
 		}
-		
 	}
 }
