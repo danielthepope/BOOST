@@ -22,6 +22,7 @@ public class Boost
 	private static final int DIFF_THRESHOLD = 40;
 	private static int headAngle = 0;
 	private static int previousLightDifference = 255;
+	private static LightHistory lightHistory;
 //	private static final File music = new File("imperial.wav");
 	private static final File doh = new File("doh.wav");
 	private static final File aaah = new File("aaah.wav");
@@ -43,52 +44,12 @@ public class Boost
 		sensor = new UltrasonicSensor(SensorPort.S4);
 		ls = new LightSensor(SensorPort.S1);
 		ls.setFloodlight(false);
+		lightHistory = new LightHistory(5);
 		
 		Motor.A.setSpeed(720);
 		
 		pilot.setTravelSpeed(100);
 		pilot.setRotateSpeed(45);
-	}
-	
-	private static void original() throws Exception
-	{
-		int distance = 255;
-		int brightness = 0;
-//		Sound.playSample(music, 100);
-		while(!Button.ESCAPE.isDown())
-		{
-			LCD.drawString("I AM BOOST", 0, 0);
-			distance = sensor.getDistance();
-			brightness = ls.readValue();
-			LCD.clear(1);
-			LCD.drawString("distance: " + distance + "cm", 0, 1);
-			LCD.clear(2);
-			LCD.drawString("   light: " + brightness, 0, 2);
-			checkSideWall();
-			if (Button.ENTER.isDown())
-			{
-				forward(1);
-			}
-			if (Button.RIGHT.isDown())
-			{
-				turnLeft(90);
-			}
-			if (Button.LEFT.isDown())
-			{
-				turnRight(90);
-			}
-			if (distance < MIN_DIST)
-			{
-				LCD.drawString("MOVE BITCH", 0, 3);
-				LCD.drawString("GET OUT THE WAY!", 0, 4);
-			} else {
-				LCD.clear(3);
-				LCD.clear(4);
-				Motor.B.stop(true);
-				Motor.C.stop(true);
-			}
-			Thread.sleep(50);
-		}
 	}
 	
 	private static void algorithmOne() throws Exception
@@ -151,6 +112,8 @@ public class Boost
 		// 2 : I know there is a wall to my left. Go forward, checking both sensors
 		// 3 : There is no wall on the left. I now need to turn left
 		// 4 : I have just turned left. I need to go forward until I find a wall again
+		// 5 : I'm slowly converging with the wall to the left
+		// 6 : I'm slowly going away from the wall on the left
 		int state = -1 ;
 		LCD.drawString("I AM BOOST 1.1", 0, 0);
 		while (!Button.ESCAPE.isDown())
@@ -193,11 +156,28 @@ public class Boost
 					if (reallyNoSideWall())
 					{
 						state = 3;
+						continue;
 					}
 				}
 				else if (checkFrontWall()) // If there is a wall in front, turn right.
 				{
 					state = 1;
+					continue;
+				}
+				else
+				{
+					int trend = lightHistory.checkForATrend();
+					if (trend == 1)
+					{
+						// We're about to collide with the wall
+						state = 5;
+					}
+					else if (trend == -1)
+					{
+						// We're losing the wall
+						state = 6;
+					}
+					// else we're following the walll perfectly
 				}
 			}
 			if (state == 1) // There is a wall in front of me!
@@ -216,6 +196,7 @@ public class Boost
 					go((MIN_DIST - sensor.getDistance()) * -10); // Reverse a bit
 				}
 				turnRight(90);
+				lightHistory.clear();
 				state = 2;
 			}
 			if (state == 3) // The wall to my left has gone!
@@ -238,9 +219,23 @@ public class Boost
 				{
 					state = 2;
 					Sound.playSample(woohoo);
+					lightHistory.clear();
 				}
 				// If there is not a side wall yet, keep going forward. No change.
 				// state = 4;
+			}
+			if (state == 5) // We're slowly converging with the wall
+			{
+				stop();
+				dansFindPerpendicularWall(45, 90, 2);
+				state = 0;
+			}
+			if (state == 6) // We're slowly going away from the wall
+			{
+				stop();
+				turnLeft(45);
+				dansFindPerpendicularWall(45, 90, 2);
+				state = 0;
 			}
 			Thread.sleep(50);
 		}
@@ -310,6 +305,7 @@ public class Boost
 		Thread.sleep(50);
 		offValue = ls.getNormalizedLightValue();
 		difference = onValue - offValue;
+		lightHistory.add(difference);
 		
 		if(previousLightDifference == 255)
 			previousLightDifference = difference;
