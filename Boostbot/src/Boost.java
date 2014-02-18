@@ -18,9 +18,8 @@ public class Boost
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
 	private static final int MIN_DIST = 11;
-	private static final int LED_THRESHOLD = 2;
-	private static final int DIFF_THRESHOLD = 4;
-	private static final double ROTATION_COEFFICIENT = 3;
+	private static final int LED_THRESHOLD = 15;
+	private static final int DIFF_THRESHOLD = 40;
 	private static int headAngle = 0;
 	private static int previousLightDifference = 255;
 //	private static final File music = new File("imperial.wav");
@@ -145,7 +144,8 @@ public class Boost
 	private static void algorithmOnePointOne() throws Exception
 	{
 		// Set state
-		// -1: 
+		// -2: I know there's nothing around me. Let's go forward to the limit
+		// -1: Rotating head, trying to find a perpendicular wall
 		// 0 : Boost is looking perpendicular at a wall
 		// 1 : There is a wall in front of me. I need to turn right
 		// 2 : I know there is a wall to my left. Go forward, checking both sensors
@@ -160,7 +160,8 @@ public class Boost
 			LCD.drawString("State " + state, 0, 1);
 			if (state == -1)
 			{
-				dansFindPerpendicularWall();
+				//TODO State -2 not implemented yet.
+				dansFindPerpendicularWall(-90, 90, 2);
 				state = 0;
 			}
 			if (state == 0)
@@ -248,7 +249,6 @@ public class Boost
 	private static void testMethod() throws Exception
 	{
 //		findPerpendicularWall(calculateDistances(5), 5);
-		dansFindPerpendicularWall();
 	}
 	
 	private static void forward(double revolutions) throws Exception
@@ -305,10 +305,10 @@ public class Boost
 		int onValue, offValue, difference, differenceChange;
 		ls.setFloodlight(true);
 		Thread.sleep(50);
-		onValue = ls.readValue();
+		onValue = ls.getNormalizedLightValue();
 		ls.setFloodlight(false);
 		Thread.sleep(50);
-		offValue = ls.readValue();
+		offValue = ls.getNormalizedLightValue();
 		difference = onValue - offValue;
 		
 		if(previousLightDifference == 255)
@@ -359,7 +359,7 @@ public class Boost
 		headAngle = degrees;
 	}
 	
-	private static void dansFindPerpendicularWall()
+	private static void dansFindPerpendicularWall(int min, int max, int radiusStep)
 	{
 		boolean foundWall = false;
 		SonarArray array;
@@ -367,9 +367,9 @@ public class Boost
 		do
 		{
 			array = new SonarArray();
-			int radiusStep = 5;
+//			int radiusStep = 2;
 			int distance = 255;
-			for (int r = -90; r <= 90; r += radiusStep)
+			for (int r = min; r <= max; r += radiusStep)
 			{
 				rotateHeadToAngle(r);
 				distance = sensor.getDistance();
@@ -378,6 +378,7 @@ public class Boost
 			closestValue = array.findClosestAngle();
 			if (closestValue.getDistance() == 255)
 			{
+				// TODO This bit is wrong. Get rid of it. (i.e. move it to another state)
 				// No obstacles nearby! Go forward a bit
 				go(500);
 			}
