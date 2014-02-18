@@ -18,7 +18,7 @@ public class Boost
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
 	private static final int MIN_DIST = 11;
-	private static final int LED_THRESHOLD = 15;
+	private static final int LED_THRESHOLD = 20;
 	private static final int DIFF_THRESHOLD = 40;
 	private static int headAngle = 0;
 	private static int previousLightDifference = 255;
@@ -44,7 +44,7 @@ public class Boost
 		sensor = new UltrasonicSensor(SensorPort.S4);
 		ls = new LightSensor(SensorPort.S1);
 		ls.setFloodlight(false);
-		lightHistory = new LightHistory(5);
+		lightHistory = new LightHistory(7);
 		
 		Motor.A.setSpeed(720);
 		
@@ -231,14 +231,14 @@ public class Boost
 			if (state == 5) // We're slowly converging with the wall
 			{
 				stop();
-				dansFindPerpendicularWall(45, 90, 2);
+				dansFindPerpendicularWall(0, 90, 2);
 				state = 0;
 			}
 			if (state == 6) // We're slowly going away from the wall
 			{
 				stop();
-				turnLeft(45);
-				dansFindPerpendicularWall(45, 90, 2);
+				turnLeft(20);
+				dansFindPerpendicularWall(0, 90, 2);
 				state = 0;
 			}
 			Thread.sleep(50);
