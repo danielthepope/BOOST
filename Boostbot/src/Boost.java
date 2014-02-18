@@ -123,15 +123,24 @@ public class Boost
 			LCD.drawString("State " + state, 0, 1);
 			if (state == -1)
 			{
-				//TODO State -2 not implemented yet.
-				dansFindPerpendicularWall(-90, 90, 2);
-				state = 0;
+				if( dansFindPerpendicularWall(-90, 90, 2) )
+				{
+					state = 0;
+				}
+				else //no perp wall so we go to state -2
+					state = -2;
+			}
+			if (state == -2)
+			{
+				go(500);
+				state = -1;
 			}
 			if (state == 0)
 			{
 				if(checkSideWall())
 				{
 					LCD.drawString("I found a side wall", 0, 2);
+					lightHistory.clear();
 					state = 2;
 					continue;
 				}
@@ -221,9 +230,9 @@ public class Boost
 				}
 				else if (checkSideWall())
 				{
+					lightHistory.clear();
 					state = 2;
 					Sound.playSample(woohoo);
-					lightHistory.clear();
 				}
 				// If there is not a side wall yet, keep going forward. No change.
 				// state = 4;
@@ -231,15 +240,27 @@ public class Boost
 			if (state == 5) // We're slowly converging with the wall
 			{
 				stop();
-				dansFindPerpendicularWall(0, 90, 2);
-				state = 0;
+				if(dansFindPerpendicularWall(0, 90, 2))
+				{
+					state = 0;
+				}
+				else //we didn't find a wall so we must have passed one, ie. state 3 - lets turn!
+				{
+					state = 3;
+				}
 			}
 			if (state == 6) // We're slowly going away from the wall
 			{
 				stop();
 				turnLeft(20);
-				dansFindPerpendicularWall(0, 90, 2);
-				state = 0;
+				if(dansFindPerpendicularWall(0, 90, 2))
+				{
+					state = 0;
+				}
+				else //we didn't find a wall so we must have passed one, ie. state 3 - lets turn!
+				{
+					state = 3;
+				}
 			}
 			Thread.sleep(50);
 		}
@@ -359,13 +380,13 @@ public class Boost
 		headAngle = degrees;
 	}
 	
-	private static void dansFindPerpendicularWall(int min, int max, int radiusStep)
+	private static boolean dansFindPerpendicularWall(int min, int max, int radiusStep)
 	{
-		boolean foundWall = false;
+		//boolean foundWall = false;
 		SonarArray array;
 		SonarValue closestValue;
-		do
-		{
+		//do
+		//{
 			array = new SonarArray();
 //			int radiusStep = 2;
 			int distance = 255;
@@ -376,21 +397,22 @@ public class Boost
 				array.addValue(new SonarValue(r, distance));
 			}
 			closestValue = array.findClosestAngle();
-			if (closestValue.getDistance() == 255)
+			if (closestValue.getDistance() > 50)
 			{
-				// TODO This bit is wrong. Get rid of it. (i.e. move it to another state)
-				// No obstacles nearby! Go forward a bit
-				go(500);
+				rotateHeadToAngle(0);
+				return false;
 			}
 			else
 			{
-				foundWall = true;
+				//foundWall = true;
+			//}
+		//} while (foundWall == false);
+				int angle = closestValue.getAngle(); 
+				rotateHeadToAngle(angle);
+				turnLeft(angle);
+				rotateHeadToAngle(0);
+				return true;
 			}
-		} while (foundWall == false);
-		int angle = closestValue.getAngle(); 
-		rotateHeadToAngle(angle);
-		turnLeft(angle);
-		rotateHeadToAngle(0);
 	}
 	
 	private static ArrayList<Integer> calculateDistances(int rdeg)
