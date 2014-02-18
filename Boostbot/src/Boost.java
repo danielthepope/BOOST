@@ -158,6 +158,10 @@ public class Boost
 						state = 3;
 						continue;
 					}
+					else
+					{
+						go(90);
+					}
 				}
 				else if (checkFrontWall()) // If there is a wall in front, turn right.
 				{
