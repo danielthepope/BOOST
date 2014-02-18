@@ -20,6 +20,7 @@ public class Boost
 	private static final int MIN_DIST = 11;
 	private static final int LED_THRESHOLD = 20;
 	private static final int DIFF_THRESHOLD = 40;
+	private static final int LIGHT_HISTORY_SIZE = 7; //TODO we can probably reduce this.
 	private static int headAngle = 0;
 	private static int previousLightDifference = 255;
 	private static LightHistory lightHistory;
@@ -33,7 +34,6 @@ public class Boost
 	{
 		setup();
 		
-//		algorithmOne();
 		algorithmOnePointOne();
 //		testMethod();
 	}
@@ -44,62 +44,12 @@ public class Boost
 		sensor = new UltrasonicSensor(SensorPort.S4);
 		ls = new LightSensor(SensorPort.S1);
 		ls.setFloodlight(false);
-		lightHistory = new LightHistory(7);
+		lightHistory = new LightHistory(LIGHT_HISTORY_SIZE);
 		
 		Motor.A.setSpeed(720);
 		
 		pilot.setTravelSpeed(100);
 		pilot.setRotateSpeed(45);
-	}
-	
-	private static void algorithmOne() throws Exception
-	{
-		LCD.drawString("I AM BOOST 1.0", 0, 0);
-		//Set states
-		boolean frontWall = false;
-		boolean sideWall = false;
-		boolean oldSideWall = false;
-		
-		//Start off perpendicular to a wall, some distance away
-		while(!Button.ESCAPE.isDown())
-		{
-			frontWall = checkFrontWall();
-			oldSideWall = sideWall;
-			sideWall = checkSideWall();
-			
-			LCD.clear();
-			
-			if (frontWall) LCD.drawString("FRONT", 0, 1);
-			if (sideWall) LCD.drawString("SIDE", 0, 2);
-			/*if (!oldSideWall) LCD.drawString("OLDSIDE", 0, 3);
-			if (!sideWall) LCD.drawString("SIDE2", 0, 2);
-			if (oldSideWall) LCD.drawString("OLDSIDE2", 0, 3);
-			
-			if (!sideWall && oldSideWall) LCD.drawString("WOAH", 0, 3);*/
-			
-			if (!sideWall && oldSideWall && reallyNoSideWall()) //We've changed from a state of wall to non wall
-			{
-				stop();
-				turnLeft(90);
-				go(); //go to make sure we don't get caught in a perpetual spin
-			}
-			else if (!frontWall)
-			{
-				go();
-			}
-			else if (frontWall)
-			{
-				stop();
-				turnRight(90);
-				go(); //go to make sure we don't get caught in a perpetual spin
-			}
-			else
-			{
-				stop();
-				Thread.sleep(3000);
-				return;
-			}
-		}
 	}
 	
 	private static void algorithmOnePointOne() throws Exception
@@ -180,17 +130,15 @@ public class Boost
 				else
 				{
 					int trend = lightHistory.checkForATrend();
-					if (trend == 1)
+					if (trend == 1) // We're about to collide with the wall
 					{
-						// We're about to collide with the wall
 						state = 5;
 					}
-					else if (trend == -1)
+					else if (trend == -1) // We're losing the wall
 					{
-						// We're losing the wall
 						state = 6;
 					}
-					// else we're following the walll perfectly
+					// else we're following the wall perfectly. Keep calm and carry on.
 				}
 			}
 			if (state == 1) // There is a wall in front of me!
@@ -239,28 +187,17 @@ public class Boost
 			}
 			if (state == 5) // We're slowly converging with the wall
 			{
-				stop();
-				if(dansFindPerpendicularWall(0, 90, 2))
-				{
-					state = 0;
-				}
-				else //we didn't find a wall so we must have passed one, ie. state 3 - lets turn!
-				{
-					state = 3;
-				}
+				arcLeft(-5); // So actually, arc right.
+				go();
+				lightHistory.clear();
+				state = 2;
 			}
 			if (state == 6) // We're slowly going away from the wall
 			{
-				stop();
-				turnLeft(20);
-				if(dansFindPerpendicularWall(0, 90, 2))
-				{
-					state = 0;
-				}
-				else //we didn't find a wall so we must have passed one, ie. state 3 - lets turn!
-				{
-					state = 3;
-				}
+				arcLeft(5); // Turn left a little bit
+				go();
+				lightHistory.clear();
+				state = 2;
 			}
 			Thread.sleep(50);
 		}
@@ -269,13 +206,6 @@ public class Boost
 	private static void testMethod() throws Exception
 	{
 //		findPerpendicularWall(calculateDistances(5), 5);
-	}
-	
-	private static void forward(double revolutions) throws Exception
-	{
-		int angle = 360 * (int) revolutions;
-		Motor.B.rotate(angle, true);
-		Motor.C.rotate(angle, false);
 	}
 	
 	private static void go()
@@ -382,140 +312,29 @@ public class Boost
 	
 	private static boolean dansFindPerpendicularWall(int min, int max, int radiusStep)
 	{
-		//boolean foundWall = false;
 		SonarArray array;
 		SonarValue closestValue;
-		//do
-		//{
-			array = new SonarArray();
-//			int radiusStep = 2;
-			int distance = 255;
-			for (int r = min; r <= max; r += radiusStep)
-			{
-				rotateHeadToAngle(r);
-				distance = sensor.getDistance();
-				array.addValue(new SonarValue(r, distance));
-			}
-			closestValue = array.findClosestAngle();
-			if (closestValue.getDistance() > 50)
-			{
-				rotateHeadToAngle(0);
-				return false;
-			}
-			else
-			{
-				//foundWall = true;
-			//}
-		//} while (foundWall == false);
-				int angle = closestValue.getAngle(); 
-				rotateHeadToAngle(angle);
-				turnLeft(angle);
-				rotateHeadToAngle(0);
-				return true;
-			}
-	}
-	
-	private static ArrayList<Integer> calculateDistances(int rdeg)
-	{
-		ArrayList<Integer> distances = new ArrayList<Integer>();
-		
-		//distance straight ahead
-		distances.add(sensor.getDistance());
-		
-		//rotate positive degree
-		for(int i = 0; i <= 90; i+=rdeg)
+		array = new SonarArray();
+		int distance = 255;
+		for (int r = min; r <= max; r += radiusStep)
 		{
-			rotateHead(rdeg);
-			distances.add(sensor.getDistance());
+			rotateHeadToAngle(r);
+			distance = sensor.getDistance();
+			array.addValue(new SonarValue(r, distance));
 		}
-		
-		//return to original position
-		rotateHeadToAngle(0);
-		
-		//rotate negative degree
-		for(int i = 0; i <= 90; i+=rdeg)
+		closestValue = array.findClosestAngle();
+		if (closestValue.getDistance() > 50)
 		{
-			rotateHead(-rdeg);
-			distances.add(sensor.getDistance());
+			rotateHeadToAngle(0);
+			return false;
 		}
-		
-		//return to original position
-		rotateHeadToAngle(0);
-		
-		return distances;
-	}
-	
-	private static boolean amIPerpendicular(ArrayList<Integer> distances, int rdeg)
-	{
-		//Find the distance with the least value
-		//If there's a tie pick the first one
-		int minimumDistance = 255;
-		int minimumIndex = distances.size();
-				
-		for(int j = 0; j < distances.size(); j++)
+		else
 		{
-			if( distances.get(j) < minimumDistance )
-			{
-				minimumDistance = distances.get(j);
-				minimumIndex = j;
-			}
-		}
-		
-		//now we analyse the data
-		if(minimumIndex == 0 
-				|| minimumIndex == distances.size()-1/2 
-				|| minimumIndex == distances.size()-1)
-		{
+			int angle = closestValue.getAngle(); 
+			rotateHeadToAngle(angle);
+			turnLeft(angle);
+			rotateHeadToAngle(0);
 			return true;
-		}
-		
-		return false;
-	}
-	
-	private static void findPerpendicularWall(ArrayList<Integer> distances, int rdeg)
-	{	
-		//Find the distance with the least value
-		//If there's a tie pick the first one
-		int minimumDistance = 255;
-		int minimumIndex = distances.size();
-		
-		for(int j = 0; j < distances.size(); j++)
-		{
-			if( distances.get(j) < minimumDistance )
-			{
-				minimumDistance = distances.get(j);
-				minimumIndex = j;
-			}
-		}
-		
-		//now we analyse the data
-		if(minimumDistance <= MIN_DIST) //we are very close to a wall
-		{
-			LCD.clear(3);
-			LCD.clear(4);
-			LCD.drawString("WALL TOO CLOSE", 0, 3);
-			
-			//Go backwards and repeat
-		}
-		else if(minimumDistance < 255)
-		{
-			LCD.clear(3);
-			LCD.clear(4);
-			LCD.drawString("DIST: " + minimumDistance, 0, 3);
-			
-			int angle = minimumIndex * rdeg;
-			
-			if(minimumIndex > distances.size()-1/2)
-			{
-				angle = angle - 90;
-				LCD.drawString("TURNING LEFT: " + angle, 0, 3);
-				turnLeft(angle);
-			}
-			else
-			{
-				LCD.drawString("TURNING RIGHT: " + angle, 0, 3);
-				turnRight(angle);
-			}	
 		}
 	}
 }
