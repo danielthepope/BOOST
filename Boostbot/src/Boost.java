@@ -18,8 +18,8 @@ public class Boost
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
 	private static final int MIN_DIST = 11;
-	private static final int LED_THRESHOLD = 20;
-	private static final int DIFF_THRESHOLD = 40;
+	private static int LED_THRESHOLD = 20;
+	private static final int DIFF_THRESHOLD = 7;
 	private static final int LIGHT_HISTORY_SIZE = 7; //TODO we can probably reduce this.
 	private static final int SONAR_DISTANCE_LIMIT = 70;
 	private static int headAngle = 0;
@@ -127,9 +127,22 @@ public class Boost
 				if (!checkSideWall()) // If there is no side wall we need to turn left
 				{
 					stop();
-					if (reallyNoSideWall())
+					int sideWall = reallyNoSideWall();
+					if (sideWall == 1)
 					{
 						state = 3;
+						continue;
+					}
+					else if (sideWall == -2)
+					{
+						state = 6;
+						continue;
+					}
+					else if (sideWall == -1)
+					{
+						stop();
+						turnLeft(90);
+						state = 0;
 						continue;
 					}
 					else
@@ -258,16 +271,43 @@ public class Boost
 		pilot.arc(-82, -degrees);
 	}
 	
-	private static boolean reallyNoSideWall()
+	/*
+	 * Return
+	 * 1 if there is NO wall (i.e. wall is MIN_DIST + 10 away
+	 * 0 if there is a wall (i.e. wall is between MIN_DIST and MIN_DIST+4
+	 * -1 if there is a wall - but it's close (i.e wall is less than MIN_DIST)
+	 * -2 if there is a wall - but we should turn a little closer (i.e. wall is between MIN_DIST+5 and MIN_DIST + 10)
+	 */
+	private static int reallyNoSideWall()
 	{
-		boolean isThereReallyNoSideWall;
+		//boolean isThereReallyNoSideWall;
+		int sideWall = -7;
 		
 		rotateHeadToAngle(90);
-		isThereReallyNoSideWall = !checkFrontWall(MIN_DIST + 10);
+		//isThereReallyNoSideWall = !checkFrontWall(MIN_DIST + 10);
+		if(!checkFrontWall(MIN_DIST + 10))
+		{
+			sideWall = 1;
+		}
+		else if(checkFrontWall(MIN_DIST + 5) && !checkFrontWall(MIN_DIST))
+		{
+			sideWall = 0;
+		}
+		else if(checkFrontWall(MIN_DIST))
+		{
+			sideWall = -1;
+		}
+		else if (checkFrontWall(MIN_DIST+10) && !checkFrontWall(MIN_DIST + 4))
+		{
+			sideWall = -2;
+		}
+		
 		rotateHeadToAngle(0);
 		
-		return isThereReallyNoSideWall;
+		return sideWall;
 	}
+	
+	
 	
 	private static boolean checkSideWall() throws Exception
 	{
@@ -278,6 +318,7 @@ public class Boost
 		ls.setFloodlight(false);
 		Thread.sleep(50);
 		offValue = ls.getNormalizedLightValue();
+		LED_THRESHOLD = calculateThreshold(offValue);
 		difference = onValue - offValue;
 		
 		if(previousLightDifference == 255)
@@ -290,8 +331,10 @@ public class Boost
 		
 		LCD.clear(4);
 		LCD.clear(5);
+		LCD.clear(6);
 		LCD.drawString("      diff=" + difference, 0, 4);
 		LCD.drawString("diffchange=" + differenceChange, 0, 5);
+		LCD.drawString(" threshold=" + LED_THRESHOLD, 0, 6);
 		if (difference > LED_THRESHOLD)
 		{
 			if (differenceChange < DIFF_THRESHOLD)
@@ -359,5 +402,11 @@ public class Boost
 			rotateHeadToAngle(0);
 			return true;
 		}
+	}
+	
+	private static int calculateThreshold(int ledOffValue)
+	{
+		//y = 0.0012x2 - 0.8884x + 172.02
+		return (int) ((0.0012 * ledOffValue * ledOffValue) - (0.8884 * ledOffValue) + 172.02); 
 	}
 }
