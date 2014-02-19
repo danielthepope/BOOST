@@ -21,6 +21,7 @@ public class Boost
 	private static final int LED_THRESHOLD = 20;
 	private static final int DIFF_THRESHOLD = 40;
 	private static final int LIGHT_HISTORY_SIZE = 7; //TODO we can probably reduce this.
+	private static final int SONAR_DISTANCE_LIMIT = 70;
 	private static int headAngle = 0;
 	private static int previousLightDifference = 255;
 	private static LightHistory lightHistory;
@@ -28,6 +29,9 @@ public class Boost
 	private static final File doh = new File("doh.wav");
 	private static final File aaah = new File("aaah.wav");
 	private static final File woohoo = new File("woohoo.wav");
+//	private static final File hehehe = new File("hehehe.wav");
+	private static final File timidDoh = new File("timidDoh.wav");
+	private static final File oopsy = new File("oopsy.wav");
 //	private static final File flintstones = new File("flintstones.wav");
 	
 	public static void main(String[] args) throws Exception
@@ -52,6 +56,15 @@ public class Boost
 		pilot.setRotateSpeed(45);
 	}
 	
+	private static void testMethod() throws Exception
+	{
+		go(100);
+		arcRight(5);
+		go(100);
+		arcLeft(5);
+		stop();
+	}
+
 	private static void algorithmOnePointOne() throws Exception
 	{
 		// Set state
@@ -73,19 +86,21 @@ public class Boost
 			LCD.drawString("State " + state, 0, 1);
 			if (state == -1)
 			{
-				if( dansFindPerpendicularWall(-90, 90, 2) )
+				if( findPerpendicularWall(-90, 90, 2) )
 				{
 					state = 0;
 				}
 				else //no perp wall so we go to state -2
+				{
 					state = -2;
+				}
 			}
-			if (state == -2)
+			else if (state == -2)
 			{
 				go(500);
 				state = -1;
 			}
-			if (state == 0)
+			else if (state == 0)
 			{
 				if(checkSideWall())
 				{
@@ -105,7 +120,7 @@ public class Boost
 					continue;
 				}				
 			}
-			if (state == 2)
+			else if (state == 2)
 			{
 				LCD.drawString("I'm following the side wall", 0, 2);
 				go();
@@ -141,7 +156,7 @@ public class Boost
 					// else we're following the wall perfectly. Keep calm and carry on.
 				}
 			}
-			if (state == 1) // There is a wall in front of me!
+			else if (state == 1) // There is a wall in front of me!
 			{
 				stop();
 				LCD.clear(2);
@@ -160,7 +175,7 @@ public class Boost
 				lightHistory.clear();
 				state = 2;
 			}
-			if (state == 3) // The wall to my left has gone!
+			else if (state == 3) // The wall to my left has gone!
 			{
 				Sound.playSample(aaah);
 				go(35);
@@ -169,7 +184,7 @@ public class Boost
 				arcLeft(90);
 				state = 4;
 			}
-			if (state == 4)
+			else if (state == 4)
 			{
 				go();
 				if (checkFrontWall())
@@ -185,27 +200,26 @@ public class Boost
 				// If there is not a side wall yet, keep going forward. No change.
 				// state = 4;
 			}
-			if (state == 5) // We're slowly converging with the wall
+			else if (state == 5) // We're slowly converging with the wall
 			{
-				arcLeft(-5); // So actually, arc right.
+				Sound.playSample(timidDoh);
+				stop();
+				arcRight(5); // Turn right a little bit
 				go();
 				lightHistory.clear();
 				state = 2;
 			}
-			if (state == 6) // We're slowly going away from the wall
+			else if (state == 6) // We're slowly going away from the wall
 			{
+				Sound.playSample(oopsy);
+				stop();
 				arcLeft(5); // Turn left a little bit
 				go();
 				lightHistory.clear();
 				state = 2;
 			}
-			Thread.sleep(50);
+			//Thread.sleep(50);
 		}
-	}
-	
-	private static void testMethod() throws Exception
-	{
-//		findPerpendicularWall(calculateDistances(5), 5);
 	}
 	
 	private static void go()
@@ -239,13 +253,18 @@ public class Boost
 		pilot.arc(82, degrees);
 	}
 	
+	private static void arcRight(int degrees)
+	{
+		pilot.arc(-82, -degrees);
+	}
+	
 	private static boolean reallyNoSideWall()
 	{
 		boolean isThereReallyNoSideWall;
 		
-		rotateHead(90);
-		isThereReallyNoSideWall = !checkFrontWall(MIN_DIST + 6);
-		rotateHead(-90);
+		rotateHeadToAngle(90);
+		isThereReallyNoSideWall = !checkFrontWall(MIN_DIST + 10);
+		rotateHeadToAngle(0);
 		
 		return isThereReallyNoSideWall;
 	}
@@ -260,13 +279,14 @@ public class Boost
 		Thread.sleep(50);
 		offValue = ls.getNormalizedLightValue();
 		difference = onValue - offValue;
-		lightHistory.add(difference);
 		
 		if(previousLightDifference == 255)
 			previousLightDifference = difference;
 		
 		differenceChange = previousLightDifference - difference;
 		previousLightDifference = difference;
+		
+		lightHistory.add(differenceChange);
 		
 		LCD.clear(4);
 		LCD.clear(5);
@@ -310,20 +330,23 @@ public class Boost
 		headAngle = degrees;
 	}
 	
-	private static boolean dansFindPerpendicularWall(int min, int max, int radiusStep)
+	private static boolean findPerpendicularWall(int min, int max, int radiusStep)
 	{
 		SonarArray array;
 		SonarValue closestValue;
-		array = new SonarArray();
-		int distance = 255;
+		array = new SonarArray(SONAR_DISTANCE_LIMIT);
+		int distance;
 		for (int r = min; r <= max; r += radiusStep)
 		{
+			//LCD.clear(3);
 			rotateHeadToAngle(r);
 			distance = sensor.getDistance();
+			LCD.drawString(r + "*, " + distance + "cm   ", 0, 3);
 			array.addValue(new SonarValue(r, distance));
 		}
 		closestValue = array.findClosestAngle();
-		if (closestValue.getDistance() > 50)
+		LCD.clear(3);
+		if (closestValue.getDistance() > SONAR_DISTANCE_LIMIT)
 		{
 			rotateHeadToAngle(0);
 			return false;

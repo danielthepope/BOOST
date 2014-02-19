@@ -3,11 +3,12 @@ import java.util.ArrayList;
 
 public class SonarArray {
 	private ArrayList<SonarValue> array;
-	private static final int ignoreDistancesOver = 70;
+	private int ignoreDistancesOver;
 	
-	public SonarArray()
+	public SonarArray(int distanceLimit)
 	{
 		array = new ArrayList<SonarValue>();
+		ignoreDistancesOver = distanceLimit;
 	}
 	
 	public void addValue(SonarValue value)

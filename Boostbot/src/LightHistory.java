@@ -23,16 +23,21 @@ public class LightHistory {
 	
 	public int checkForATrend()
 	{
+		// 0 1 1 0 0 = go right, return 1
+		// 0 0 -1 0 0 = go left, return -1
+		// 0 1 -1 1 0 = go straight on, return 0
+		// 0 0 0 0 0 = go straight on, return 0
 		if (values.size() < historySize) return 0;
 		
-		int numberOfIncreases = 0;
-		for (int i = 0; i < historySize - 1; i++)
+		boolean goLeft = true;
+		boolean goRight = true;
+		for (int i = 0; i < historySize; i++)
 		{
-			if (values.get(i) < values.get(i + 1)) numberOfIncreases++;
-			else if (values.get(i) > values.get(i + 1)) numberOfIncreases--;
+			if (values.get(i) > 0) goRight = false;
+			if (values.get(i) < 0) goLeft = false;
 		}
-		if (numberOfIncreases >= historySize - 1) return 1; // Robot is coming towards a wall
-		else if (numberOfIncreases <= -historySize + 1) return -1; // Robot is moving away from wall
+		if (goLeft && !goRight) return -1;
+		else if (!goLeft && goRight) return 1;
 		else return 0;
 	}
 	
