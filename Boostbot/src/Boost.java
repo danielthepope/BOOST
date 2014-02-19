@@ -124,7 +124,12 @@ public class Boost
 			{
 				LCD.drawString("I'm following the side wall", 0, 2);
 				go();
-				if (!checkSideWall()) // If there is no side wall we need to turn left
+				if (checkFrontWall()) // If there is a wall in front, turn right.
+				{
+					state = 1;
+					continue;
+				}
+				else if (!checkSideWall()) // If there is no side wall we need to turn left
 				{
 					stop();
 					int sideWall = reallyNoSideWall();
@@ -149,12 +154,7 @@ public class Boost
 					{
 						go(90);
 					}
-				}
-				else if (checkFrontWall()) // If there is a wall in front, turn right.
-				{
-					state = 1;
-					continue;
-				}
+				} 
 				else
 				{
 					int trend = lightHistory.checkForATrend();
