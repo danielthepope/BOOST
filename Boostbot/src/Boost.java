@@ -17,7 +17,7 @@ public class Boost
 	private static DifferentialPilot pilot;
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
-	private static final int MIN_DIST = 11;
+	private static final int MIN_DIST = 15; // 11
 	private static int LED_THRESHOLD = 20;
 	private static final int DIFF_THRESHOLD = 7;
 	private static final int LIGHT_HISTORY_SIZE = 7; //TODO we can probably reduce this.
@@ -52,8 +52,8 @@ public class Boost
 		
 		Motor.A.setSpeed(720);
 		
-		pilot.setTravelSpeed(100);
-		pilot.setRotateSpeed(45);
+		pilot.setTravelSpeed(130); //100
+		pilot.setRotateSpeed(90);  //45
 	}
 	
 	private static void testMethod() throws Exception
@@ -131,9 +131,9 @@ public class Boost
 				{
 					go(MIN_DIST * -10); // Head is touching the wall
 				}
-				else if (reading <= MIN_DIST)
+				else if (reading <= MIN_DIST - 5)
 				{
-					go((MIN_DIST - sensor.getDistance()) * -10); // Reverse a bit
+					go(((MIN_DIST - 3) - sensor.getDistance()) * -10); // Reverse a bit
 				}
 				turnRight(90);
 				lightHistory.clear();
@@ -190,7 +190,7 @@ public class Boost
 			else if (state == 5) // The wall to my left has gone!
 			{
 				Sound.playSample(aaah);
-				go(35);
+				go(45);
 				LCD.clear(2);
 				LCD.drawString("Oh dear oh dear oh dear", 0, 2);
 				arcLeft(90);
@@ -284,11 +284,9 @@ public class Boost
 	 */
 	private static int reallyNoSideWall()
 	{
-		//boolean isThereReallyNoSideWall;
 		int sideWall = -7;
 		
 		rotateHeadToAngle(90);
-		//isThereReallyNoSideWall = !checkFrontWall(MIN_DIST + 10);
 		if(!checkFrontWall(MIN_DIST + 10))
 		{
 			sideWall = 1;
