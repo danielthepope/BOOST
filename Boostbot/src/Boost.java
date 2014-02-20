@@ -68,45 +68,45 @@ public class Boost
 	private static void algorithmOnePointOne() throws Exception
 	{
 		// Set state
-		// -2: I know there's nothing around me. Let's go forward to the limit
-		// -1: Rotating head, trying to find a perpendicular wall
-		// 0 : Boost is looking perpendicular at a wall
-		// 1 : There is a wall in front of me. I need to turn right
-		// 2 : I know there is a wall to my left. Go forward, checking both sensors
-		// 3 : There is no wall on the left. I now need to turn left
-		// 4 : I have just turned left. I need to go forward until I find a wall again
-		// 5 : I'm slowly converging with the wall to the left
-		// 6 : I'm slowly going away from the wall on the left
-		int state = -1 ;
+		// 0 : Rotating head, trying to find a perpendicular wall
+		// 1 : I know there's nothing around me. Let's go forward to the limit
+		// 2 : Boost is looking perpendicular at a wall
+		// 3 : There is a wall in front of me. I need to turn right
+		// 4 : I know there is a wall to my left. Go forward, checking both sensors
+		// 5 : There is no wall on the left. I now need to turn left
+		// 6 : I have just turned left. I need to go forward until I find a wall again
+		// 7 : I'm slowly converging with the wall to the left
+		// 8 : I'm slowly going away from the wall on the left
+		int state = 0;
 		LCD.drawString("I AM BOOST 1.1", 0, 0);
 		while (!Button.ESCAPE.isDown())
 		{
 			LCD.clear(1);
 			LCD.clear(2);
 			LCD.drawString("State " + state, 0, 1);
-			if (state == -1)
+			if (state == 0)
 			{
 				if( findPerpendicularWall(-90, 90, 2) )
 				{
-					state = 0;
+					state = 2;
 				}
 				else //no perp wall so we go to state -2
 				{
-					state = -2;
+					state = 1;
 				}
 			}
-			else if (state == -2)
+			else if (state == 1)
 			{
 				go(500);
-				state = -1;
+				state = 0;
 			}
-			else if (state == 0)
+			else if (state == 2)
 			{
 				if(checkSideWall())
 				{
 					LCD.drawString("I found a side wall", 0, 2);
 					lightHistory.clear();
-					state = 2;
+					state = 4;
 					continue;
 				}
 				else if(!checkFrontWall())
@@ -116,60 +116,11 @@ public class Boost
 				}
 				else
 				{
-					state = 1;
+					state = 3;
 					continue;
 				}				
 			}
-			else if (state == 2)
-			{
-				LCD.drawString("I'm following the side wall", 0, 2);
-				go();
-				if (checkFrontWall()) // If there is a wall in front, turn right.
-				{
-					state = 1;
-					continue;
-				}
-				else if (!checkSideWall()) // If there is no side wall we need to turn left
-				{
-					stop();
-					int sideWall = reallyNoSideWall();
-					if (sideWall == 1)
-					{
-						state = 3;
-						continue;
-					}
-					else if (sideWall == -2)
-					{
-						state = 6;
-						continue;
-					}
-					else if (sideWall == -1)
-					{
-						stop();
-						turnLeft(90);
-						state = 0;
-						continue;
-					}
-					else
-					{
-						go(90);
-					}
-				} 
-				else
-				{
-					int trend = lightHistory.checkForATrend();
-					if (trend == 1) // We're about to collide with the wall
-					{
-						state = 5;
-					}
-					else if (trend == -1) // We're losing the wall
-					{
-						state = 6;
-					}
-					// else we're following the wall perfectly. Keep calm and carry on.
-				}
-			}
-			else if (state == 1) // There is a wall in front of me!
+			else if (state == 3) // There is a wall in front of me!
 			{
 				stop();
 				LCD.clear(2);
@@ -186,52 +137,105 @@ public class Boost
 				}
 				turnRight(90);
 				lightHistory.clear();
-				state = 2;
+				state = 4;
 			}
-			else if (state == 3) // The wall to my left has gone!
+			else if (state == 4)
+			{
+				LCD.drawString("I'm following the side wall", 0, 2);
+				go();
+				if (checkFrontWall()) // If there is a wall in front, turn right.
+				{
+					state = 3;
+					continue;
+				}
+				else if (!checkSideWall()) // If there is no side wall we need to turn left
+				{
+					stop();
+					int sideWall = reallyNoSideWall();
+					if (sideWall == 1)
+					{
+						state = 5;
+						continue;
+					}
+					else if (sideWall == -2)
+					{
+						state = 9; // i.e. go left 90 degrees.
+						// state = 8; // i.e. turn left a little bit
+						continue;
+					}
+					else if (sideWall == -1)
+					{
+						state = 9;
+						continue;
+					}
+					else
+					{
+						go(90);
+					}
+				} 
+				else
+				{
+					int trend = lightHistory.checkForATrend();
+					if (trend == 1) // We're about to collide with the wall
+					{
+						state = 7;
+					}
+					else if (trend == -1) // We're losing the wall
+					{
+						state = 8;
+					}
+					// else we're following the wall perfectly. Keep calm and carry on.
+				}
+			}
+			else if (state == 5) // The wall to my left has gone!
 			{
 				Sound.playSample(aaah);
 				go(35);
 				LCD.clear(2);
 				LCD.drawString("Oh dear oh dear oh dear", 0, 2);
 				arcLeft(90);
-				state = 4;
+				state = 6;
 			}
-			else if (state == 4)
+			else if (state == 6)
 			{
 				go();
 				if (checkFrontWall())
 				{
-					state = 1;
+					state = 3;
 				}
 				else if (checkSideWall())
 				{
 					lightHistory.clear();
-					state = 2;
+					state = 4;
 					Sound.playSample(woohoo);
 				}
 				// If there is not a side wall yet, keep going forward. No change.
-				// state = 4;
+				// state = 6;
 			}
-			else if (state == 5) // We're slowly converging with the wall
+			else if (state == 7) // We're slowly converging with the wall
 			{
 				Sound.playSample(timidDoh);
 				stop();
 				arcRight(5); // Turn right a little bit
 				go();
 				lightHistory.clear();
-				state = 2;
+				state = 4;
 			}
-			else if (state == 6) // We're slowly going away from the wall
+			else if (state == 8) // We're slowly going away from the wall
 			{
 				Sound.playSample(oopsy);
 				stop();
 				arcLeft(5); // Turn left a little bit
 				go();
 				lightHistory.clear();
+				state = 4;
+			}
+			else if (state == 9) // We're either too close to the wall on the left or a bit too far away
+			{
+				stop();
+				turnLeft(90);
 				state = 2;
 			}
-			//Thread.sleep(50);
 		}
 	}
 	
@@ -407,6 +411,7 @@ public class Boost
 	private static int calculateThreshold(int ledOffValue)
 	{
 		//y = 0.0012x2 - 0.8884x + 172.02
-		return (int) ((0.0012 * ledOffValue * ledOffValue) - (0.8884 * ledOffValue) + 172.02); 
+		// NEW ONE: y = 0.0015x2 - 1.031x + 189.55
+		return (int) ((0.0015 * ledOffValue * ledOffValue) - (1.031 * ledOffValue) + 189.55); 
 	}
 }
