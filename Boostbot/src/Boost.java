@@ -408,8 +408,8 @@ public class Boost
 	
 	private static int calculateThreshold(int ledOffValue)
 	{
-		//y = 0.0012x2 - 0.8884x + 172.02
-		// NEW ONE: y = 0.0015x2 - 1.031x + 189.55
-		return (int) ((0.0015 * ledOffValue * ledOffValue) - (1.031 * ledOffValue) + 189.55); 
+		// OLD y = 0.0015x2 - 1.031x + 189.55
+		// y = 0.001x2 - 0.7905x + 157.6
+		return (int) ((0.001 * ledOffValue * ledOffValue) - (0.7905 * ledOffValue) + 157.6);
 	}
 }

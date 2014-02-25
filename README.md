@@ -27,9 +27,19 @@ Error with light detector on back and ultrasound check on front.  Light register
 
 
 
-TO DO
-=====
-1) Multiple side check fix (when the light sensor thinks there isn't a wall but the head sees that there is recursively)
-2) Make the robot turn perpendicular to the wall
-3) Have a pressure sensor and run a perpendicular check when activated
-4) MAYBE handle complicated reverse
+DAVE'S AWESOME IDEA
+- Can we make a robot using finite state machine that can navigate around a course, starting parallel to the wall, just using the LED?
+	- Assuming we are only turning left
+- Then test in different light conditions
+	- Expected fail
+- Added the variable threshold to improve the test
+	- Test should now pass :)
+- Move on to Brooks, we want it to be real world - add ultrasound to make it more robust and start it from anywhere.
+
+This might take longer than 2 pages to write, but write it then cut it down.
+	
+	Test contents
+- Number of turns done correctly - pass
+- Fail when robot doesn't turn when it should
+- Fail when robot turns when it shouldn't
+- Try walls of different materials. If it goes straight past a material change, that's also a pass :)
