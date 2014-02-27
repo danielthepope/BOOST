@@ -77,7 +77,8 @@ public class Boost
 		// 6 : I have just turned left. I need to go forward until I find a wall again
 		// 7 : I'm slowly converging with the wall to the left
 		// 8 : I'm slowly going away from the wall on the left
-		int state = 0;
+		int state = 0; // EXPERIMENT NORMAL
+		//int state = 4; // EXPERIMENT 1
 		LCD.drawString("I AM BOOST 1.1", 0, 0);
 		while (!Button.ESCAPE.isDown())
 		{
@@ -150,11 +151,15 @@ public class Boost
 				}
 				else if (!checkSideWall()) // If there is no side wall we need to turn left
 				{
+					// EXPERIMENT 1
+//					stop();
+//					state = 5;
+					// EXPERIMENT NORMAL:
 					stop();
 					int sideWall = reallyNoSideWall();
 					if (sideWall == 1)
 					{
-						state = 5;
+						state = 5; // No wall = turn left
 						continue;
 					}
 					else if (sideWall == -2)
@@ -190,7 +195,7 @@ public class Boost
 			else if (state == 5) // The wall to my left has gone!
 			{
 				Sound.playSample(aaah);
-				go(45);
+				go(35);
 				LCD.clear(2);
 				LCD.drawString("Oh dear oh dear oh dear", 0, 2);
 				arcLeft(90);
@@ -339,14 +344,14 @@ public class Boost
 		LCD.drawString(" threshold=" + LED_THRESHOLD, 0, 6);
 		if (difference > LED_THRESHOLD)
 		{
-			if (differenceChange < DIFF_THRESHOLD)
-			{
+//			if (differenceChange < DIFF_THRESHOLD)
+//			{
 				return true;
-			}
-			else
-			{
-				Sound.playTone(300, 20);
-			}
+//			}
+//			else
+//			{
+//				Sound.playTone(300, 20);
+//			}
 		}
 		return false;
 	}
@@ -406,10 +411,13 @@ public class Boost
 		}
 	}
 	
-	private static int calculateThreshold(int ledOffValue)
+	private static int calculateThreshold(int v)
 	{
-		// OLD y = 0.0015x2 - 1.031x + 189.55
-		// y = 0.001x2 - 0.7905x + 157.6
-		return (int) ((0.001 * ledOffValue * ledOffValue) - (0.7905 * ledOffValue) + 157.6);
+		// y = 0.0011x2 - 0.8669x + 170.1
+		// y = 0.00113159490529176x2 - 0.866937722472893x + 170.103701944699
+
+		return (int) ((0.00113159490529176 * v * v) + (-0.866937722472893 * v) + 170.103701944699); // EXPERIMENT NORMAL
+		
+		//return 20; // EXPERIMENT 1
 	}
 }
