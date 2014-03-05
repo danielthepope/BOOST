@@ -1,5 +1,4 @@
 import java.io.File;
-import java.util.ArrayList;
 
 import lejos.nxt.Button;
 import lejos.nxt.LCD;
@@ -9,7 +8,6 @@ import lejos.nxt.SensorPort;
 import lejos.nxt.Sound;
 import lejos.nxt.UltrasonicSensor;
 import lejos.robotics.navigation.DifferentialPilot;
-import lejos.util.PilotProps;
 
 
 public class Boost
@@ -19,7 +17,6 @@ public class Boost
 	private static LightSensor ls;
 	private static final int MIN_DIST = 15; // 11
 	private static int LED_THRESHOLD = 20;
-	private static final int DIFF_THRESHOLD = 7;
 	private static final int LIGHT_HISTORY_SIZE = 7; //TODO we can probably reduce this.
 	private static final int SONAR_DISTANCE_LIMIT = 70;
 	private static int headAngle = 0;
@@ -77,8 +74,8 @@ public class Boost
 		// 6 : I have just turned left. I need to go forward until I find a wall again
 		// 7 : I'm slowly converging with the wall to the left
 		// 8 : I'm slowly going away from the wall on the left
-		int state = 0; // EXPERIMENT NORMAL
-		//int state = 4; // EXPERIMENT 1
+		int state = 0; // NO EXPERIMENT
+		//int state = 4; // EXPERIMENTS
 		LCD.drawString("I AM BOOST 1.1", 0, 0);
 		while (!Button.ESCAPE.isDown())
 		{
@@ -162,13 +159,13 @@ public class Boost
 						state = 5; // No wall = turn left
 						continue;
 					}
-					else if (sideWall == -2)
+					else if (sideWall == -2)  // EXPERIMENT 3: COMMENT OUT
 					{
 						state = 9; // i.e. go left 90 degrees.
 						// state = 8; // i.e. turn left a little bit
 						continue;
 					}
-					else if (sideWall == -1)
+					else if (sideWall == -1) // EXPERIMENT 3: COMMENT OUT
 					{
 						state = 9;
 						continue;
@@ -342,18 +339,8 @@ public class Boost
 		LCD.drawString("      diff=" + difference, 0, 4);
 		LCD.drawString("diffchange=" + differenceChange, 0, 5);
 		LCD.drawString(" threshold=" + LED_THRESHOLD, 0, 6);
-		if (difference > LED_THRESHOLD)
-		{
-//			if (differenceChange < DIFF_THRESHOLD)
-//			{
-				return true;
-//			}
-//			else
-//			{
-//				Sound.playTone(300, 20);
-//			}
-		}
-		return false;
+		if (difference > LED_THRESHOLD) return true;
+		else return false;
 	}
 	
 	private static boolean checkFrontWall()
@@ -366,12 +353,6 @@ public class Boost
 	{
 		int distance = sensor.getDistance();
 		return distance < dist;
-	}
-	
-	private static void rotateHead(int degrees)
-	{
-		headAngle += degrees;
-		Motor.A.rotate(degrees);
 	}
 	
 	private static void rotateHeadToAngle(int degrees)
