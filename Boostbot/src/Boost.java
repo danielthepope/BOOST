@@ -15,33 +15,30 @@ public class Boost
 	private static DifferentialPilot pilot;
 	private static UltrasonicSensor sensor;
 	private static LightSensor ls;
+	private static final int EXPERIMENT_NUMBER = 0; // 0 = normal operation.
 	private static final int MIN_DIST = 15; // 11
 	private static int LED_THRESHOLD = 20;
-	private static final int LIGHT_HISTORY_SIZE = 7; //TODO we can probably reduce this.
+	private static final int LIGHT_HISTORY_SIZE = 7;
 	private static final int SONAR_DISTANCE_LIMIT = 70;
 	private static int headAngle = 0;
 	private static int previousLightDifference = 255;
 	private static LightHistory lightHistory;
-//	private static final File music = new File("imperial.wav");
 	private static final File doh = new File("doh.wav");
 	private static final File aaah = new File("aaah.wav");
 	private static final File woohoo = new File("woohoo.wav");
-//	private static final File hehehe = new File("hehehe.wav");
 	private static final File timidDoh = new File("timidDoh.wav");
 	private static final File oopsy = new File("oopsy.wav");
-//	private static final File flintstones = new File("flintstones.wav");
 	
 	public static void main(String[] args) throws Exception
 	{
 		setup();
 		
 		algorithmOnePointOne();
-//		testMethod();
 	}
 	
 	private static void setup()
 	{
-		pilot = new DifferentialPilot(55, 164, Motor.B, Motor.C); //56 164
+		pilot = new DifferentialPilot(55, 164, Motor.B, Motor.C);
 		sensor = new UltrasonicSensor(SensorPort.S4);
 		ls = new LightSensor(SensorPort.S1);
 		ls.setFloodlight(false);
@@ -49,17 +46,8 @@ public class Boost
 		
 		Motor.A.setSpeed(720);
 		
-		pilot.setTravelSpeed(130); //100
-		pilot.setRotateSpeed(90);  //45
-	}
-	
-	private static void testMethod() throws Exception
-	{
-		go(100);
-		arcRight(5);
-		go(100);
-		arcLeft(5);
-		stop();
+		pilot.setTravelSpeed(130);
+		pilot.setRotateSpeed(90);
 	}
 
 	private static void algorithmOnePointOne() throws Exception
@@ -74,9 +62,9 @@ public class Boost
 		// 6 : I have just turned left. I need to go forward until I find a wall again
 		// 7 : I'm slowly converging with the wall to the left
 		// 8 : I'm slowly going away from the wall on the left
-		int state = 0; // NO EXPERIMENT
-		//int state = 4; // EXPERIMENTS
-		LCD.drawString("I AM BOOST 1.1", 0, 0);
+		int state = 0;
+		if (EXPERIMENT_NUMBER > 0) state = 4;
+		LCD.drawString("I AM BOOST (ex " + EXPERIMENT_NUMBER + ")", 0, 0);
 		while (!Button.ESCAPE.isDown())
 		{
 			LCD.clear(1);
@@ -148,31 +136,35 @@ public class Boost
 				}
 				else if (!checkSideWall()) // If there is no side wall we need to turn left
 				{
-					// EXPERIMENT 1
-//					stop();
-//					state = 5;
-					// EXPERIMENT NORMAL:
-					stop();
-					int sideWall = reallyNoSideWall();
-					if (sideWall == 1)
+					if (EXPERIMENT_NUMBER == 1 || EXPERIMENT_NUMBER == 2)
 					{
-						state = 5; // No wall = turn left
-						continue;
-					}
-					else if (sideWall == -2)  // EXPERIMENT 3: COMMENT OUT
-					{
-						state = 9; // i.e. go left 90 degrees.
-						// state = 8; // i.e. turn left a little bit
-						continue;
-					}
-					else if (sideWall == -1) // EXPERIMENT 3: COMMENT OUT
-					{
-						state = 9;
-						continue;
+						stop();
+						state = 5;
 					}
 					else
 					{
-						go(90);
+						// EXPERIMENT NORMAL:
+						stop();
+						int sideWall = reallyNoSideWall();
+						if (sideWall == 1)
+						{
+							state = 5; // No wall = turn left
+							continue;
+						}
+						else if (sideWall == -2 && EXPERIMENT_NUMBER == 0)
+						{
+							state = 9; // i.e. go left 90 degrees.
+							continue;
+						}
+						else if (sideWall == -1 && EXPERIMENT_NUMBER == 0)
+						{
+							state = 9;
+							continue;
+						}
+						else
+						{
+							go(90);
+						}
 					}
 				} 
 				else
@@ -311,8 +303,6 @@ public class Boost
 		return sideWall;
 	}
 	
-	
-	
 	private static boolean checkSideWall() throws Exception
 	{
 		int onValue, offValue, difference, differenceChange;
@@ -369,7 +359,6 @@ public class Boost
 		int distance;
 		for (int r = min; r <= max; r += radiusStep)
 		{
-			//LCD.clear(3);
 			rotateHeadToAngle(r);
 			distance = sensor.getDistance();
 			LCD.drawString(r + "*, " + distance + "cm   ", 0, 3);
@@ -394,12 +383,9 @@ public class Boost
 	
 	private static int calculateThreshold(int v)
 	{
-		// y = 0.0011x2 - 0.8669x + 170.1
-		// y = 0.00113159490529176x2 - 0.866937722472893x + 170.103701944699
+		// Threshold calculated using Excel.
 		// y = 0.00105151582815248x2 - 0.81710134380644700x + 161.65010262509900000
-
-		return (int) ((0.00105151582815248 * v * v) + (-0.817101343806447 * v) + 161.650102625099); // EXPERIMENT NORMAL
-		
-		//return 20; // EXPERIMENT 1
+		if (EXPERIMENT_NUMBER == 1) return 20;
+		else return (int) ((0.00105151582815248 * v * v) + (-0.817101343806447 * v) + 161.650102625099);
 	}
 }
